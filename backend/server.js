@@ -1,3 +1,4 @@
+require("dotenv").config();
 /**
  * ─────────────────────────────────────────────────────────────
  *  Ayonic Support Chatbot — Backend v3.0
@@ -9,6 +10,7 @@
 
 const express = require('express');
 const cors    = require('cors');
+const path    = require('path');
 const fetch   = (...args) => import('node-fetch').then(({ default: f }) => f(...args));
 const faqData = require('./faq_dataset.json');
 
@@ -18,6 +20,10 @@ const PORT = process.env.PORT || 3001;
 // ── Middleware ────────────────────────────────────────────────
 app.use(cors());
 app.use(express.json());
+
+// ── Serve frontend static files in production ────────────────
+const frontendDist = path.join(__dirname, '..', 'frontend', 'dist');
+app.use(express.static(frontendDist));
 
 // ── Config ────────────────────────────────────────────────────
 const GROQ_API_KEY      = process.env.GROQ_API_KEY;
@@ -187,6 +193,11 @@ app.get('/api/health', (req, res) => {
 // ── GET /api/faq ──────────────────────────────────────────────
 app.get('/api/faq', (_req, res) => {
   res.json({ count: faqData.length, topics: faqData.map(f => f.question) });
+});
+
+// ── Catch-all: serve frontend for any non-API route ───────────
+app.get('*', (req, res) => {
+  res.sendFile(path.join(frontendDist, 'index.html'));
 });
 
 // ── Start ─────────────────────────────────────────────────────
