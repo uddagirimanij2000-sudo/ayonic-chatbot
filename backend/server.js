@@ -1,10 +1,10 @@
 require("dotenv").config();
 /**
  * ─────────────────────────────────────────────────────────────
- *  Ayonic Support Chatbot — Backend v3.0
- *  AI Brain: Groq API (llama3-8b-8192) — replaces Ollama
- *  Search  : Semantic (nomic-embed-text via Ollama locally)
- *            OR Keyword fallback (no embedding needed on cloud)
+ *  Ayonic Support Chatbot — Backend v4.0 (Semantic Search)
+ *  AI Brain  : Groq API (llama3-8b)
+ *  Search    : Semantic embeddings (all-MiniLM-L6-v2)
+ *              + Keyword fallback (Jaccard)
  * ─────────────────────────────────────────────────────────────
  */
 
@@ -29,10 +29,77 @@ app.use(express.static(frontendDist));
 const GROQ_API_KEY      = process.env.GROQ_API_KEY;
 const GROQ_MODEL        = process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
 const GROQ_URL          = 'https://api.groq.com/openai/v1/chat/completions';
-const KEYWORD_THRESHOLD = 0.25;
-const TOP_K             = 5;
+const SEMANTIC_THRESHOLD = 0.35;
+const KEYWORD_THRESHOLD  = 0.25;
+const TOP_K              = 5;
 
-// ── Keyword Search (Jaccard) ──────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+//  SEMANTIC SEARCH — AI Embeddings
+// ═══════════════════════════════════════════════════════════════
+let embeddingPipeline = null;
+let faqEmbeddings     = [];       // pre-computed FAQ embeddings
+let semanticReady     = false;
+
+async function initSemanticSearch() {
+  try {
+    console.log('[SEMANTIC] Loading embedding model (all-MiniLM-L6-v2)...');
+    const { pipeline } = await import('@xenova/transformers');
+    embeddingPipeline = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
+
+    // Pre-compute embeddings for all FAQ questions + answers
+    console.log(`[SEMANTIC] Computing embeddings for ${faqData.length} FAQs...`);
+    for (let i = 0; i < faqData.length; i++) {
+      const text = `${faqData[i].question} ${faqData[i].answer}`;
+      const output = await embeddingPipeline(text, { pooling: 'mean', normalize: true });
+      faqEmbeddings.push(Array.from(output.data));
+    }
+
+    semanticReady = true;
+    console.log(`[SEMANTIC] ✅ Ready! ${faqEmbeddings.length} FAQ embeddings loaded.`);
+  } catch (err) {
+    console.error(`[SEMANTIC] ❌ Failed to load: ${err.message}`);
+    console.log('[SEMANTIC] Falling back to keyword search only.');
+  }
+}
+
+// Cosine similarity between two vectors
+function cosineSimilarity(a, b) {
+  let dot = 0, normA = 0, normB = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot   += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+}
+
+// Semantic search using embeddings
+async function semanticSearch(userQuestion) {
+  if (!semanticReady || !embeddingPipeline) return null;
+
+  try {
+    const output = await embeddingPipeline(userQuestion, { pooling: 'mean', normalize: true });
+    const queryEmbedding = Array.from(output.data);
+
+    const scored = faqData.map((faq, i) => ({
+      faq,
+      score: cosineSimilarity(queryEmbedding, faqEmbeddings[i]),
+    })).sort((a, b) => b.score - a.score);
+
+    const best = scored[0];
+    return {
+      match: best.score >= SEMANTIC_THRESHOLD ? best.faq : null,
+      score: best.score,
+      topK:  scored.slice(0, TOP_K).map(s => s.faq),
+      method: 'semantic',
+    };
+  } catch (err) {
+    console.error(`[SEMANTIC] Search error: ${err.message}`);
+    return null;
+  }
+}
+
+// ── Keyword Search (Jaccard fallback) ─────────────────────────
 const STOP_WORDS = new Set([
   'the','and','for','are','but','not','you','all','can','was','our',
   'out','get','has','how','its','may','now','see','who','did','say',
@@ -72,7 +139,23 @@ function keywordSearch(userQuestion) {
     match: normalised >= KEYWORD_THRESHOLD ? best.faq : null,
     score: normalised,
     topK:  scored.slice(0, TOP_K).map(s => s.faq),
+    method: 'keyword',
   };
+}
+
+// ── Combined search: semantic first, keyword fallback ─────────
+async function combinedSearch(userQuestion) {
+  // Try semantic search first
+  const semanticResult = await semanticSearch(userQuestion);
+  if (semanticResult && semanticResult.match) {
+    console.log(`[SEARCH] ✨ Semantic match! score=${semanticResult.score.toFixed(4)}`);
+    return semanticResult;
+  }
+
+  // Fallback to keyword search
+  const keywordResult = keywordSearch(userQuestion);
+  console.log(`[SEARCH] 🔑 Keyword match. score=${keywordResult.score.toFixed(4)}`);
+  return keywordResult;
 }
 
 // ── Build system prompt ───────────────────────────────────────
@@ -148,9 +231,9 @@ app.post('/api/chat', async (req, res) => {
   const userMessage = message.trim();
   console.log(`\n[QUERY] "${userMessage}"`);
 
-  // STEP 1 — Keyword search
-  const { match, score, topK } = keywordSearch(userMessage);
-  console.log(`[SEARCH] score=${score.toFixed(4)} match=${!!match}`);
+  // STEP 1 — Combined search (semantic + keyword fallback)
+  const { match, score, topK, method } = await combinedSearch(userMessage);
+  console.log(`[SEARCH] method=${method} score=${score.toFixed(4)} match=${!!match}`);
 
   // STEP 2 — Reject if below threshold
   if (!match) {
@@ -158,6 +241,7 @@ app.post('/api/chat', async (req, res) => {
       reply:  "I'm sorry, I can only answer questions about Ayonic's services, policies, and support. Please contact our support team at support@ayonic.com for further help.",
       source: 'rejected',
       score,
+      method,
     });
   }
 
@@ -166,15 +250,15 @@ app.post('/api/chat', async (req, res) => {
     const systemPrompt = buildSystemPrompt(topK);
     const reply        = await callGroq(systemPrompt, userMessage, history);
     console.log(`[REPLY] ${reply.substring(0, 100)}`);
-    return res.json({ reply: reply.trim(), source: 'groq', score });
+    return res.json({ reply: reply.trim(), source: 'groq', score, method });
 
   } catch (err) {
     console.error(`[GROQ ERROR] ${err.message}`);
-    // Fallback — return direct FAQ answer
     return res.json({
       reply:  match.answer,
       source: 'fallback',
       score,
+      method,
     });
   }
 });
@@ -182,11 +266,12 @@ app.post('/api/chat', async (req, res) => {
 // ── GET /api/health ───────────────────────────────────────────
 app.get('/api/health', (req, res) => {
   res.json({
-    status:     'ok',
-    faqEntries: faqData.length,
-    model:      GROQ_MODEL,
-    aiProvider: 'Groq API',
-    groqKey:    GROQ_API_KEY ? '✅ configured' : '❌ missing',
+    status:         'ok',
+    faqEntries:     faqData.length,
+    model:          GROQ_MODEL,
+    aiProvider:     'Groq API',
+    groqKey:        GROQ_API_KEY ? '✅ configured' : '❌ missing',
+    semanticSearch: semanticReady ? '✅ active' : '⏳ loading...',
   });
 });
 
@@ -202,10 +287,14 @@ app.get('*', (req, res) => {
 
 // ── Start ─────────────────────────────────────────────────────
 app.listen(PORT, () => {
-  console.log(`\n✅  Ayonic Chatbot Backend v3.0`);
+  console.log(`\n✅  Ayonic Chatbot Backend v4.0 (Semantic Search)`);
   console.log(`    URL        : http://localhost:${PORT}`);
   console.log(`    AI Brain   : Groq API (${GROQ_MODEL})`);
   console.log(`    FAQ entries: ${faqData.length}`);
   console.log(`    Groq Key   : ${GROQ_API_KEY ? '✅ configured' : '❌ MISSING - add to .env'}`);
+  console.log(`    Search     : Semantic (loading model in background...)`);
   console.log(`    Health     : http://localhost:${PORT}/api/health\n`);
+
+  // Load semantic model in background (doesn't block server start)
+  initSemanticSearch();
 });
