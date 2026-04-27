@@ -1,21 +1,26 @@
 require("dotenv").config();
 /**
  * ─────────────────────────────────────────────────────────────
- *  Ayonic Support Chatbot — Backend v4.0 (Semantic Search)
+ *  Ayonic Support Chatbot — Backend v5.0 (Self-Learning)
  *  AI Brain  : Groq API (llama3-8b)
  *  Search    : Semantic embeddings (all-MiniLM-L6-v2)
  *              + Keyword fallback (Jaccard)
+ *  Learning  : Saves unanswered questions for admin review
  * ─────────────────────────────────────────────────────────────
  */
 
 const express = require('express');
 const cors    = require('cors');
 const path    = require('path');
+const fs      = require('fs');
 const fetch   = (...args) => import('node-fetch').then(({ default: f }) => f(...args));
 const faqData = require('./faq_dataset.json');
 
 const app  = express();
 const PORT = process.env.PORT || 3001;
+const ADMIN_KEY = process.env.ADMIN_KEY || 'ayonic-admin-2026';
+const UNANSWERED_FILE = path.join(__dirname, 'unanswered.json');
+const FAQ_FILE = path.join(__dirname, 'faq_dataset.json');
 
 // ── Middleware ────────────────────────────────────────────────
 app.use(cors());
@@ -32,6 +37,50 @@ const GROQ_URL          = 'https://api.groq.com/openai/v1/chat/completions';
 const SEMANTIC_THRESHOLD = 0.35;
 const KEYWORD_THRESHOLD  = 0.25;
 const TOP_K              = 5;
+
+// ═══════════════════════════════════════════════════════════════
+//  UNANSWERED QUESTIONS — Self-Learning System
+// ═══════════════════════════════════════════════════════════════
+let unansweredQuestions = [];
+
+function loadUnanswered() {
+  try {
+    if (fs.existsSync(UNANSWERED_FILE)) {
+      unansweredQuestions = JSON.parse(fs.readFileSync(UNANSWERED_FILE, 'utf8'));
+      console.log(`[LEARN] Loaded ${unansweredQuestions.length} unanswered questions.`);
+    }
+  } catch (_) { unansweredQuestions = []; }
+}
+
+function saveUnanswered() {
+  try {
+    fs.writeFileSync(UNANSWERED_FILE, JSON.stringify(unansweredQuestions, null, 2));
+  } catch (err) { console.error(`[LEARN] Save error: ${err.message}`); }
+}
+
+function addUnanswered(question, username) {
+  // Don't save duplicates
+  const exists = unansweredQuestions.some(u => u.question.toLowerCase() === question.toLowerCase());
+  if (exists) {
+    // Just increment the count
+    const item = unansweredQuestions.find(u => u.question.toLowerCase() === question.toLowerCase());
+    item.count = (item.count || 1) + 1;
+    item.lastAsked = new Date().toISOString();
+    saveUnanswered();
+    return;
+  }
+  unansweredQuestions.push({
+    id: Date.now().toString(36),
+    question,
+    username: username || 'anonymous',
+    count: 1,
+    timestamp: new Date().toISOString(),
+    lastAsked: new Date().toISOString(),
+    status: 'pending',  // pending | approved | dismissed
+  });
+  saveUnanswered();
+  console.log(`[LEARN] 📝 Saved unanswered: "${question}"`);
+}
 
 // ═══════════════════════════════════════════════════════════════
 //  SEMANTIC SEARCH — AI Embeddings
@@ -235,8 +284,9 @@ app.post('/api/chat', async (req, res) => {
   const { match, score, topK, method } = await combinedSearch(userMessage);
   console.log(`[SEARCH] method=${method} score=${score.toFixed(4)} match=${!!match}`);
 
-  // STEP 2 — Reject if below threshold
+  // STEP 2 — Reject if below threshold → SAVE for learning
   if (!match) {
+    addUnanswered(userMessage, req.body.username);
     return res.json({
       reply:  "I'm sorry, I can only answer questions about Ayonic's services, policies, and support. Please contact our support team at support@ayonic.com for further help.",
       source: 'rejected',
@@ -375,6 +425,129 @@ app.get('/api/faq', (_req, res) => {
   res.json({ count: faqData.length, topics: faqData.map(f => f.question) });
 });
 
+// ═══════════════════════════════════════════════════════════════
+//  ADMIN ENDPOINTS — Manage unanswered questions & FAQs
+// ═══════════════════════════════════════════════════════════════
+
+// Middleware: check admin key
+function adminAuth(req, res, next) {
+  const key = req.headers['x-admin-key'] || req.query.key;
+  if (key !== ADMIN_KEY) {
+    return res.status(401).json({ error: 'Unauthorized. Provide x-admin-key header.' });
+  }
+  next();
+}
+
+// ── GET /api/admin/unanswered — View saved unanswered questions
+app.get('/api/admin/unanswered', adminAuth, (req, res) => {
+  const sorted = [...unansweredQuestions]
+    .filter(u => u.status === 'pending')
+    .sort((a, b) => (b.count || 1) - (a.count || 1));
+  res.json({
+    total: sorted.length,
+    questions: sorted,
+  });
+});
+
+// ── POST /api/admin/approve — Add unanswered question as new FAQ
+app.post('/api/admin/approve', adminAuth, async (req, res) => {
+  const { id, answer } = req.body;
+  if (!id || !answer?.trim()) {
+    return res.status(400).json({ error: 'id and answer are required.' });
+  }
+
+  // Find the unanswered question
+  const item = unansweredQuestions.find(u => u.id === id);
+  if (!item) {
+    return res.status(404).json({ error: 'Question not found.' });
+  }
+
+  // Add to FAQ dataset
+  const newFaq = { question: item.question, answer: answer.trim() };
+  faqData.push(newFaq);
+
+  // Save to faq_dataset.json
+  try {
+    fs.writeFileSync(FAQ_FILE, JSON.stringify(faqData, null, 2));
+  } catch (err) {
+    return res.status(500).json({ error: `Failed to save FAQ: ${err.message}` });
+  }
+
+  // Compute embedding for new FAQ (if semantic is ready)
+  if (semanticReady && embeddingPipeline) {
+    try {
+      const text = `${newFaq.question} ${newFaq.answer}`;
+      const output = await embeddingPipeline(text, { pooling: 'mean', normalize: true });
+      faqEmbeddings.push(Array.from(output.data));
+      console.log(`[LEARN] ✅ New FAQ embedded: "${newFaq.question}"`);
+    } catch (_) {}
+  }
+
+  // Mark as approved
+  item.status = 'approved';
+  item.approvedAt = new Date().toISOString();
+  saveUnanswered();
+
+  console.log(`[LEARN] ✅ New FAQ #${faqData.length}: "${newFaq.question}"`);
+  res.json({
+    success: true,
+    message: `FAQ added! Total FAQs: ${faqData.length}`,
+    faq: newFaq,
+  });
+});
+
+// ── POST /api/admin/dismiss — Dismiss an unanswered question
+app.post('/api/admin/dismiss', adminAuth, (req, res) => {
+  const { id } = req.body;
+  const item = unansweredQuestions.find(u => u.id === id);
+  if (!item) return res.status(404).json({ error: 'Not found.' });
+  item.status = 'dismissed';
+  saveUnanswered();
+  res.json({ success: true, message: 'Question dismissed.' });
+});
+
+// ── POST /api/admin/add-faq — Directly add a new FAQ
+app.post('/api/admin/add-faq', adminAuth, async (req, res) => {
+  const { question, answer } = req.body;
+  if (!question?.trim() || !answer?.trim()) {
+    return res.status(400).json({ error: 'question and answer are required.' });
+  }
+
+  const newFaq = { question: question.trim(), answer: answer.trim() };
+  faqData.push(newFaq);
+
+  try {
+    fs.writeFileSync(FAQ_FILE, JSON.stringify(faqData, null, 2));
+  } catch (err) {
+    return res.status(500).json({ error: `Failed to save: ${err.message}` });
+  }
+
+  // Compute embedding
+  if (semanticReady && embeddingPipeline) {
+    try {
+      const text = `${newFaq.question} ${newFaq.answer}`;
+      const output = await embeddingPipeline(text, { pooling: 'mean', normalize: true });
+      faqEmbeddings.push(Array.from(output.data));
+    } catch (_) {}
+  }
+
+  console.log(`[ADMIN] ✅ Added FAQ #${faqData.length}: "${newFaq.question}"`);
+  res.json({ success: true, totalFaqs: faqData.length, faq: newFaq });
+});
+
+// ── GET /api/admin/stats — Dashboard stats
+app.get('/api/admin/stats', adminAuth, (req, res) => {
+  const pending   = unansweredQuestions.filter(u => u.status === 'pending').length;
+  const approved  = unansweredQuestions.filter(u => u.status === 'approved').length;
+  const dismissed = unansweredQuestions.filter(u => u.status === 'dismissed').length;
+  res.json({
+    totalFaqs: faqData.length,
+    unanswered: { pending, approved, dismissed, total: unansweredQuestions.length },
+    semanticSearch: semanticReady ? 'active' : 'loading',
+    model: GROQ_MODEL,
+  });
+});
+
 // ── Catch-all: serve frontend for any non-API route ───────────
 app.get('*', (req, res) => {
   res.sendFile(path.join(frontendDist, 'index.html'));
@@ -382,14 +555,16 @@ app.get('*', (req, res) => {
 
 // ── Start ─────────────────────────────────────────────────────
 app.listen(PORT, () => {
-  console.log(`\n✅  Ayonic Chatbot Backend v4.0 (Semantic Search)`);
+  loadUnanswered();
+  console.log(`\n✅  Ayonic Chatbot Backend v5.0 (Self-Learning)`);
   console.log(`    URL        : http://localhost:${PORT}`);
   console.log(`    AI Brain   : Groq API (${GROQ_MODEL})`);
   console.log(`    FAQ entries: ${faqData.length}`);
-  console.log(`    Groq Key   : ${GROQ_API_KEY ? '✅ configured' : '❌ MISSING - add to .env'}`);
-  console.log(`    Search     : Semantic (loading model in background...)`);
+  console.log(`    Unanswered : ${unansweredQuestions.length} saved questions`);
+  console.log(`    Groq Key   : ${GROQ_API_KEY ? '✅ configured' : '❌ MISSING'}`);
+  console.log(`    Admin Key  : ${ADMIN_KEY}`);
+  console.log(`    Search     : Semantic (loading in background...)`);
   console.log(`    Health     : http://localhost:${PORT}/api/health\n`);
 
-  // Load semantic model in background (doesn't block server start)
   initSemanticSearch();
 });
