@@ -263,6 +263,101 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
+// ── POST /api/chat/stream (SSE streaming) ────────────────────
+app.post('/api/chat/stream', async (req, res) => {
+  const { message, history = [] } = req.body;
+
+  if (!message?.trim()) {
+    return res.status(400).json({ error: 'Message is required.' });
+  }
+
+  const userMessage = message.trim();
+  console.log(`\n[STREAM] "${userMessage}"`);
+
+  // Search
+  const { match, score, topK, method } = await combinedSearch(userMessage);
+  console.log(`[SEARCH] method=${method} score=${score.toFixed(4)} match=${!!match}`);
+
+  // Set SSE headers
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+
+  // If no match, send rejection
+  if (!match) {
+    const rejectMsg = "I'm sorry, I can only answer questions about Ayonic's services, policies, and support. Please contact our support team at support@ayonic.com for further help.";
+    res.write(`data: ${JSON.stringify({ token: rejectMsg })}\n\n`);
+    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+    return res.end();
+  }
+
+  try {
+    // Call Groq with streaming
+    if (!GROQ_API_KEY) throw new Error('GROQ_API_KEY not set');
+
+    const systemPrompt = buildSystemPrompt(topK);
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      ...history,
+      { role: 'user', content: userMessage },
+    ];
+
+    const groqRes = await fetch(GROQ_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${GROQ_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        messages,
+        max_tokens: 500,
+        temperature: 0.3,
+        top_p: 0.85,
+        stream: true,
+      }),
+      signal: AbortSignal.timeout(30_000),
+    });
+
+    if (!groqRes.ok) throw new Error(`Groq error ${groqRes.status}`);
+
+    const reader = groqRes.body;
+    const decoder = new (require('util').TextDecoder)();
+    let buffer = '';
+
+    for await (const chunk of reader) {
+      buffer += decoder.decode(chunk, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6).trim();
+          if (data === '[DONE]') {
+            res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+            continue;
+          }
+          try {
+            const parsed = JSON.parse(data);
+            const token = parsed.choices?.[0]?.delta?.content;
+            if (token) {
+              res.write(`data: ${JSON.stringify({ token })}\n\n`);
+            }
+          } catch (_) {}
+        }
+      }
+    }
+
+    res.end();
+  } catch (err) {
+    console.error(`[STREAM ERROR] ${err.message}`);
+    // Fallback — send the FAQ answer directly
+    res.write(`data: ${JSON.stringify({ token: match.answer })}\n\n`);
+    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+    res.end();
+  }
+});
+
 // ── GET /api/health ───────────────────────────────────────────
 app.get('/api/health', (req, res) => {
   res.json({
