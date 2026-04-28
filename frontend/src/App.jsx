@@ -52,17 +52,17 @@ const T = {
     thinking:        "Thinking…",
     speaking:        "Speaking…",
     hiListening:     (n) => `Hi ${n}! 👋 I'm listening.`,
-    welcome:         (n) => `Hi ${n}! 😊 I'm your Ayonic support assistant.\nI can help with orders, returns, shipping, payments, and more. What can I do for you today?`,
+    welcome:         (n) => `Hi ${n}! 😊 I'm your Ayonic support assistant.\nI can help with bookings, payments, cancellations, privacy, and more. What can I do for you today?`,
     idleMessages: [
       n => `Hey ${n}! 👋 Still there? I'm here if you need help.`,
       n => `Hi ${n}! Just checking in — anything else I can help with?`,
-      n => `${n}, feel free to ask about orders, returns or shipping! 😊`,
+      n => `${n}, feel free to ask about bookings, payments or services! 😊`,
     ],
     quickActions: [
-      { label: "Refund Status 💸",  text: "I'd like to check the status of my refund." },
-      { label: "Track Order 🚚",    text: "How can I track my order?" },
-      { label: "Return Policy 📦",  text: "What is your return policy?" },
-      { label: "Payment Help 💳",   text: "What payment methods do you accept?" },
+      { label: "How to Book 📋",     text: "How do I book a service on Ayonic?" },
+      { label: "Payment Methods 💳", text: "What payment methods are accepted on Ayonic?" },
+      { label: "Cancel Booking ❌",  text: "Can I cancel a booking?" },
+      { label: "Privacy Policy 🔒",  text: "Is my personal data protected on Ayonic?" },
     ],
   },
   de: {
@@ -87,17 +87,17 @@ const T = {
     thinking:        "Ich denke nach…",
     speaking:        "Ich spreche…",
     hiListening:     (n) => `Hallo ${n}! 👋 Ich höre zu.`,
-    welcome:         (n) => `Hallo ${n}! 😊 Ich bin Ihr Ayonic Support-Assistent.\nIch helfe Ihnen bei Bestellungen, Rücksendungen, Versand, Zahlungen und mehr. Was kann ich für Sie tun?`,
+    welcome:         (n) => `Hallo ${n}! 😊 Ich bin Ihr Ayonic Support-Assistent.\nIch helfe Ihnen bei Buchungen, Zahlungen, Stornierungen, Datenschutz und mehr. Was kann ich für Sie tun?`,
     idleMessages: [
       n => `Hallo ${n}! 👋 Noch da? Ich helfe Ihnen gerne.`,
       n => `Hi ${n}! Nur zur Nachfrage — kann ich noch etwas für Sie tun?`,
-      n => `${n}, fragen Sie mich gerne zu Bestellungen, Rücksendungen oder Versand! 😊`,
+      n => `${n}, fragen Sie mich gerne zu Buchungen, Zahlungen oder Diensten! 😊`,
     ],
     quickActions: [
-      { label: "Rückerstattung 💸",  text: "Ich möchte den Status meiner Rückerstattung prüfen." },
-      { label: "Bestellung 🚚",      text: "Wie kann ich meine Bestellung verfolgen?" },
-      { label: "Rückgabe 📦",        text: "Was ist Ihre Rückgaberichtlinie?" },
-      { label: "Zahlung 💳",         text: "Welche Zahlungsmethoden akzeptieren Sie?" },
+      { label: "Wie buchen 📋",       text: "Wie buche ich einen Service bei Ayonic?" },
+      { label: "Zahlungsmethoden 💳", text: "Welche Zahlungsmethoden akzeptiert Ayonic?" },
+      { label: "Buchung stornieren ❌", text: "Kann ich eine Buchung stornieren?" },
+      { label: "Datenschutz 🔒",      text: "Sind meine persönlichen Daten bei Ayonic geschützt?" },
     ],
   },
 };
@@ -436,28 +436,31 @@ function ThumbsRating({msgId,onRate}) {
 // ── Follow-up Suggestions ─────────────────────────
 const FOLLOWUPS = {
   en: {
-    return:   ["How do I return?","What's the return window?","Do I need a receipt?"],
-    shipping: ["How long does shipping take?","Do you ship internationally?","Can I track my order?"],
-    payment:  ["What cards do you accept?","Is PayPal accepted?","Is checkout secure?"],
-    cancel:   ["Can I cancel my order?","How do I change my order?","What if it's already shipped?"],
-    default:  ["What is your return policy?","How can I track my order?","What payment methods do you accept?"],
+    booking:  ["How do I book a service?","Can I book multiple services?","Can I choose my provider?"],
+    payment:  ["What payment methods are accepted?","Are payments secure?","Can I pay the provider directly?"],
+    cancel:   ["Can I cancel a booking?","What is the cancellation policy?","Will I get a refund if I cancel?"],
+    privacy:  ["Is my personal data protected?","What are my privacy rights?","Does Ayonic share my data?"],
+    provider: ["How do you verify providers?","What if the provider doesn't show up?","Can I rate a provider?"],
+    default:  ["How do I book a service?","What payment methods are accepted?","Is my data protected?"],
   },
   de: {
-    return:   ["Wie gebe ich zurück?","Was ist das Rückgabefenster?","Brauche ich einen Kassenbon?"],
-    shipping: ["Wie lange dauert der Versand?","Versenden Sie international?","Wie verfolge ich meine Bestellung?"],
-    payment:  ["Welche Karten akzeptieren Sie?","Ist PayPal möglich?","Ist der Checkout sicher?"],
-    cancel:   ["Kann ich meine Bestellung stornieren?","Wie ändere ich meine Bestellung?","Was wenn es schon versendet wurde?"],
-    default:  ["Was ist Ihre Rückgaberichtlinie?","Wie verfolge ich meine Bestellung?","Welche Zahlungsmethoden akzeptieren Sie?"],
+    booking:  ["Wie buche ich einen Service?","Kann ich mehrere Services buchen?","Kann ich meinen Anbieter wählen?"],
+    payment:  ["Welche Zahlungsmethoden werden akzeptiert?","Sind Zahlungen sicher?","Kann ich den Anbieter direkt bezahlen?"],
+    cancel:   ["Kann ich eine Buchung stornieren?","Was ist die Stornierungsrichtlinie?","Bekomme ich eine Rückerstattung?"],
+    privacy:  ["Sind meine Daten geschützt?","Was sind meine Datenschutzrechte?","Teilt Ayonic meine Daten?"],
+    provider: ["Wie überprüft ihr die Anbieter?","Was wenn der Anbieter nicht kommt?","Kann ich einen Anbieter bewerten?"],
+    default:  ["Wie buche ich einen Service?","Welche Zahlungsmethoden gibt es?","Sind meine Daten geschützt?"],
   },
 };
 
 function getFollowups(text, lang="en") {
   const t = text.toLowerCase();
   const F = FOLLOWUPS[lang] || FOLLOWUPS.en;
-  if(t.includes("return")||t.includes("refund")||t.includes("rückgabe")||t.includes("rücksend")||t.includes("rückerstatt")) return F.return;
-  if(t.includes("ship")||t.includes("deliver")||t.includes("track")||t.includes("versand")||t.includes("liefer")||t.includes("verfol")) return F.shipping;
+  if(t.includes("book")||t.includes("service")||t.includes("buch")||t.includes("dienst")) return F.booking;
   if(t.includes("pay")||t.includes("card")||t.includes("paypal")||t.includes("zahl")||t.includes("karte")) return F.payment;
-  if(t.includes("cancel")||t.includes("change")||t.includes("stornier")||t.includes("änder")) return F.cancel;
+  if(t.includes("cancel")||t.includes("refund")||t.includes("stornier")||t.includes("rückerstatt")) return F.cancel;
+  if(t.includes("privacy")||t.includes("data")||t.includes("gdpr")||t.includes("datenschutz")||t.includes("daten")) return F.privacy;
+  if(t.includes("provider")||t.includes("anbieter")||t.includes("verify")||t.includes("rate")||t.includes("review")) return F.provider;
   return F.default;
 }
 

@@ -9,11 +9,11 @@
   },
   {
     "question": "Do I need an account to use Ayonic?",
-    "answer": "Yes \u2014 you need to create an account to book services, manage your bookings, and rate providers."
+    "answer": "Yes — you need to create an account to book services, manage your bookings, and rate providers."
   },
   {
     "question": "Can I book multiple services at once?",
-    "answer": "Usually yes \u2014 you can schedule more than one service for different times or even at the same time if providers are available."
+    "answer": "Usually yes — you can schedule more than one service for different times or even at the same time if providers are available."
   },
   {
     "question": "How do you verify service providers?",
@@ -21,7 +21,7 @@
   },
   {
     "question": "Can I choose my preferred provider?",
-    "answer": "Yes \u2014 once providers are shown or matched, you can often choose from among available providers, or rebook someone you have used before if they accept."
+    "answer": "Yes — once providers are shown or matched, you can often choose from among available providers, or rebook someone you have used before if they accept."
   },
   {
     "question": "What if the service provider does not show up?",
@@ -29,7 +29,7 @@
   },
   {
     "question": "Can I rate or review a provider after the service?",
-    "answer": "Yes \u2014 customers can leave ratings and reviews for providers to help future customers make decisions and to maintain service quality on the platform."
+    "answer": "Yes — customers can leave ratings and reviews for providers to help future customers make decisions and to maintain service quality on the platform."
   },
   {
     "question": "What payment methods are accepted on Ayonic?",
@@ -41,11 +41,11 @@
   },
   {
     "question": "Are payments secure on Ayonic?",
-    "answer": "Yes \u2014 the platform uses encrypted payment processing and secure payment gateways to protect your financial data. Ayonic does not store full credit card numbers."
+    "answer": "Yes — the platform uses encrypted payment processing and secure payment gateways to protect your financial data. Ayonic does not store full credit card numbers."
   },
   {
     "question": "Can I pay the provider directly in cash?",
-    "answer": "No \u2014 all payments must go through the platform so that there is accountability, proper records, and protection for refunds and disputes."
+    "answer": "No — all payments must go through the platform so that there is accountability, proper records, and protection for refunds and disputes."
   },
   {
     "question": "Can I cancel a booking?",
@@ -61,7 +61,7 @@
   },
   {
     "question": "Will I get a refund if I cancel?",
-    "answer": "Possibly \u2014 it depends on when you cancel and the terms. Cancelling too close to the service time may result in a cancellation fee or reduced refund."
+    "answer": "Possibly — it depends on when you cancel and the terms. Cancelling too close to the service time may result in a cancellation fee or reduced refund."
   },
   {
     "question": "How does Ayonic ensure customer safety?",
@@ -73,7 +73,7 @@
   },
   {
     "question": "Is my personal data protected on Ayonic?",
-    "answer": "Yes \u2014 the platform uses secure systems, data encryption, and privacy policies. It stores only the minimum required data and follows data protection laws including GDPR."
+    "answer": "Yes — the platform uses secure systems, data encryption, and privacy policies. It stores only the minimum required data and follows data protection laws including GDPR."
   },
   {
     "question": "How can I contact Ayonic customer support?",
@@ -137,7 +137,7 @@
   },
   {
     "question": "Who can I complain to about Ayonic's data practices?",
-    "answer": "You can lodge a complaint with the Berlin Commissioner for Data Protection and Freedom of Information (Berliner Beauftragte f\u00fcr Datenschutz und Informationsfreiheit), or with the data protection authority in your country of residence."
+    "answer": "You can lodge a complaint with the Berlin Commissioner for Data Protection and Freedom of Information (Berliner Beauftragte für Datenschutz und Informationsfreiheit), or with the data protection authority in your country of residence."
   },
   {
     "question": "Does Ayonic share my data with other users?",
@@ -145,7 +145,7 @@
   },
   {
     "question": "Does Ayonic share my data with third party companies?",
-    "answer": "Yes \u2014 we share necessary data with trusted third-party processors including cloud hosting providers like AWS and Google Cloud, payment processors like Stripe, and SMS and email delivery services. All are bound by strict Data Processing Agreements."
+    "answer": "Yes — we share necessary data with trusted third-party processors including cloud hosting providers like AWS and Google Cloud, payment processors like Stripe, and SMS and email delivery services. All are bound by strict Data Processing Agreements."
   },
   {
     "question": "Does Ayonic share my data with authorities?",
@@ -169,7 +169,7 @@
   },
   {
     "question": "Is Ayonic an employer of providers?",
-    "answer": "No \u2014 Ayonic is not an employment agency and does not employ providers. Providers are independent professionals who run their own businesses, set their own rates, use their own tools, and have full discretion to accept or decline tasks. No employment, agency, or partnership relationship is created."
+    "answer": "No — Ayonic is not an employment agency and does not employ providers. Providers are independent professionals who run their own businesses, set their own rates, use their own tools, and have full discretion to accept or decline tasks. No employment, agency, or partnership relationship is created."
   },
   {
     "question": "Who is a Client on Ayonic?",
@@ -193,7 +193,7 @@
   },
   {
     "question": "Can I copy or reverse engineer Ayonic?",
-    "answer": "No \u2014 you may not copy, download, redesign, reconfigure, reverse engineer, retransmit, or otherwise exploit any part of the platform without Ayonic's prior written consent."
+    "answer": "No — you may not copy, download, redesign, reconfigure, reverse engineer, retransmit, or otherwise exploit any part of the platform without Ayonic's prior written consent."
   },
   {
     "question": "What are my responsibilities as an Ayonic user?",
@@ -201,7 +201,7 @@
   },
   {
     "question": "Can I use Ayonic for illegal purchases?",
-    "answer": "No \u2014 you may not use the platform for the purchase or delivery of alcohol, controlled substances, or any illegal goods or services."
+    "answer": "No — you may not use the platform for the purchase or delivery of alcohol, controlled substances, or any illegal goods or services."
   },
   {
     "question": "What are the requirements for providers on Ayonic?",
@@ -213,11 +213,11 @@
   },
   {
     "question": "Can I use the Ayonic logo or brand name?",
-    "answer": "No \u2014 the Ayonic service marks, logos, and trademarks may not be used by providers or other users without Ayonic's express prior written consent."
+    "answer": "No — the Ayonic service marks, logos, and trademarks may not be used by providers or other users without Ayonic's express prior written consent."
   },
   {
     "question": "Is Ayonic responsible for third party websites?",
-    "answer": "No \u2014 links to third-party websites on the platform are for reference and convenience only. Ayonic does not control or endorse those websites and is not responsible for their content. Your use of third-party websites is at your own risk."
+    "answer": "No — links to third-party websites on the platform are for reference and convenience only. Ayonic does not control or endorse those websites and is not responsible for their content. Your use of third-party websites is at your own risk."
   },
   {
     "question": "How do I report a copyright infringement on Ayonic?",
@@ -241,11 +241,11 @@
   },
   {
     "question": "Is an electronic signature valid on Ayonic?",
-    "answer": "Yes \u2014 clicking a button or using any input device to indicate consent is treated as a legally valid electronic signature with the same legal effect as a handwritten signature. No third-party certification authority is required."
+    "answer": "Yes — clicking a button or using any input device to indicate consent is treated as a legally valid electronic signature with the same legal effect as a handwritten signature. No third-party certification authority is required."
   },
   {
     "question": "Can Ayonic assign or transfer the agreement?",
-    "answer": "Yes \u2014 Ayonic may assign or transfer the agreement and will notify you. Where required by law you may choose to terminate the agreement. You may not assign or transfer the agreement without prior written approval from Ayonic."
+    "answer": "Yes — Ayonic may assign or transfer the agreement and will notify you. Where required by law you may choose to terminate the agreement. You may not assign or transfer the agreement without prior written approval from Ayonic."
   },
   {
     "question": "What is the Ayonic Happiness Pledge?",
@@ -265,7 +265,7 @@
   },
   {
     "question": "Can Ayonic update its Terms of Service or Privacy Policy?",
-    "answer": "Yes \u2014 Ayonic may update the Terms and Privacy Policy as features or laws change. Material changes will be communicated via email or in-app notification before they take effect."
+    "answer": "Yes — Ayonic may update the Terms and Privacy Policy as features or laws change. Material changes will be communicated via email or in-app notification before they take effect."
   },
   {
     "question": "What are Cardinal Obligations on Ayonic?",
@@ -273,6 +273,70 @@
   },
   {
     "question": "Who are Consumers and Business Users on Ayonic?",
-    "answer": "A Consumer (Verbraucher) is a natural person acting outside their trade or profession under \u00a713 BGB. A Business User (Unternehmer) is a natural or legal person acting in a commercial or self-employed professional capacity under \u00a714 BGB. Mandatory consumer rights always apply to consumers regardless of the agreement."
+    "answer": "A Consumer (Verbraucher) is a natural person acting outside their trade or profession under §13 BGB. A Business User (Unternehmer) is a natural or legal person acting in a commercial or self-employed professional capacity under §14 BGB. Mandatory consumer rights always apply to consumers regardless of the agreement."
+  },
+  {
+    "question": "What is  Ayonic?",
+    "answer": "Ayonic is an online platform that connects customers needing tasks or services with local service providers who can fulfill those tasks. You can use it to book help for cleaning, handyman work, moving, or other home/local services."
+  },
+  {
+    "question": "How do I book a service?",
+    "answer": "You browse available service categories, choose the type of service you want, fill in the details (location, date/time, special instructions), and submit a booking request. Then a provider accepts it (or you may select from available ones)."
+  },
+  {
+    "question": "Do I need an account to use the platform?",
+    "answer": "Yes — you’ll need to create an account to book services, manage your bookings, rate providers, etc."
+  },
+  {
+    "question": "What if the service provider doesn’t show up?",
+    "answer": "If a provider fails to show up, you can report it through the platform. Usually there’s a resolution process — refund, rescheduling, or assigning another provider."
+  },
+  {
+    "question": "What payment methods are accepted?",
+    "answer": "Accepted payment methods usually include credit/debit cards, PayPal, RazorPay, Paystack,Stripe, Flutterwave, possibly bank transfers."
+  },
+  {
+    "question": "Are payments secure on your platform?",
+    "answer": "Yes — the platform uses encrypted payment processing and secure payment gateways to protect your financial data."
+  },
+  {
+    "question": "Can I pay the provider directly?",
+    "answer": "No — payments should go through the platform so that there’s accountability, records, and to ensure protection (refunds, disputes, etc.)."
+  },
+  {
+    "question": "How do you ensure the safety of customers?",
+    "answer": "Through provider background verification, insurance requirements, identity checks, possibly by offering guarantees or insurance for services, and adhering to safety standards."
+  },
+  {
+    "question": "What should I do if I face an issue with a provider?",
+    "answer": "Contact customer support via the platform, submit a complaint through the resolution process, provide evidence (photos, communication), and the platform will mediate."
+  },
+  {
+    "question": "Is my personal data protected?",
+    "answer": "Yes — the platform should use secure systems, data encryption, privacy policies, store minimal required data, follow data protection laws (e.g. GDPR or local equivalents)."
+  },
+  {
+    "question": "How can I contact customer support?",
+    "answer": "Via our email support@ayonic.com, phone number, or through a support form in the app or website. There may also be a “help” or “contact us” section."
+  },
+  {
+    "question": "What are your support hours?",
+    "answer": "Typically business hours in the local timezone."
+  },
+  {
+    "question": "What are Ayonic terms of service?",
+    "answer": "Ayonic Global Terms of Service govern the use of the Ayonic platform. By using the platform, you agree to all applicable terms including service bookings, payments, cancellations, and dispute resolution."
+  },
+  {
+    "question": "Does Ayonic have a privacy policy?",
+    "answer": "Yes, Ayonic has a comprehensive privacy policy that governs how we collect, use, and protect your personal data in compliance with GDPR."
+  },
+  {
+    "question": "How does Ayonic handle disputes?",
+    "answer": "Ayonic encourages users to resolve disputes directly. If that fails, users can report issues through the platform for mediation."
+  },
+  {
+    "question": "What is Ayonic liability policy?",
+    "answer": "Ayonic acts as a platform connecting customers with service providers. Ayonic is not directly liable for the quality of services provided by third-party providers."
   }
 ]
