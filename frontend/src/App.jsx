@@ -756,7 +756,7 @@ function ChatWindow({onClose, username, onUnreadChange, darkMode, toggleDark, la
     // Create empty bot bubble to stream into
     const botId=uid();
     setMessages(p=>[...p,{id:botId,role:"bot",text:"",timestamp:new Date().toISOString()}]);
-    setIsTyping(false);
+    setIsTyping(true);
 
     try{
       const res=await fetch(`${API_URL}/api/chat/stream`,{
