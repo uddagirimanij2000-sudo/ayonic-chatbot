@@ -59,11 +59,15 @@ function saveUnanswered() {
 }
 
 function addUnanswered(question, username) {
+  // Sanitize input — strip HTML tags
+  const clean = question.replace(/<[^>]*>/g, '').trim();
+  if (!clean) return;
+  
   // Don't save duplicates
-  const exists = unansweredQuestions.some(u => u.question.toLowerCase() === question.toLowerCase());
+  const exists = unansweredQuestions.some(u => u.question.toLowerCase() === clean.toLowerCase());
   if (exists) {
     // Just increment the count
-    const item = unansweredQuestions.find(u => u.question.toLowerCase() === question.toLowerCase());
+    const item = unansweredQuestions.find(u => u.question.toLowerCase() === clean.toLowerCase());
     item.count = (item.count || 1) + 1;
     item.lastAsked = new Date().toISOString();
     saveUnanswered();
@@ -71,7 +75,7 @@ function addUnanswered(question, username) {
   }
   unansweredQuestions.push({
     id: Date.now().toString(36),
-    question,
+    question: clean,
     username: username || 'anonymous',
     count: 1,
     timestamp: new Date().toISOString(),
@@ -79,7 +83,7 @@ function addUnanswered(question, username) {
     status: 'pending',  // pending | approved | dismissed
   });
   saveUnanswered();
-  console.log(`[LEARN] 📝 Saved unanswered: "${question}"`);
+  console.log(`[LEARN] 📝 Saved unanswered: "${clean}"`);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -296,6 +300,16 @@ const PERSONAL_KEYWORDS = {
 // Track users who provided a booking ID
 const pendingLookups = {};
 
+// Auto-clear pending lookups after 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [user, data] of Object.entries(pendingLookups)) {
+    if (typeof data === 'object' && data.expires && now > data.expires) {
+      delete pendingLookups[user];
+    }
+  }
+}, 60_000);
+
 function detectPersonalQuery(message) {
   const lower = message.toLowerCase();
   for (const [type, config] of Object.entries(PERSONAL_KEYWORDS)) {
@@ -304,6 +318,13 @@ function detectPersonalQuery(message) {
     }
   }
   return null;
+}
+
+// ── Greeting detection ────────────────────────────────────────
+const GREETINGS = ['hi','hello','hey','hallo','guten tag','moin','servus','good morning','good evening','howdy'];
+function isGreeting(message) {
+  const lower = message.toLowerCase().trim();
+  return GREETINGS.some(g => lower === g || lower === g + '!' || lower === g + '.');
 }
 
 function extractBookingId(message) {
@@ -369,12 +390,19 @@ app.post('/api/chat', async (req, res) => {
   // STEP 0 — Check for personal queries (payment status, booking status, etc.)
   const bookingId = extractBookingId(userMessage);
   if (bookingId && pendingLookups[username]) {
-    // User provided a Booking ID after being asked
-    const pType = pendingLookups[username];
+    const pType = pendingLookups[username].type || pendingLookups[username];
     delete pendingLookups[username];
     const reply = await handlePersonalQuery(pType, bookingId, username);
     console.log(`[PERSONAL] Lookup ${pType} for ${bookingId}`);
     return res.json({ reply, source: 'personal', score: 1, method: 'personal' });
+  }
+
+  // Check for greetings (hi, hello, etc.)
+  if (isGreeting(userMessage)) {
+    const t = language === 'de'
+      ? `Hallo ${username}! 😊 Ich bin Ihr Ayonic Support-Assistent. Wie kann ich Ihnen helfen?`
+      : `Hi ${username}! 😊 I'm your Ayonic support assistant. How can I help you today?`;
+    return res.json({ reply: t, source: 'greeting', score: 1, method: 'greeting' });
   }
 
   const personal = detectPersonalQuery(userMessage);
@@ -391,7 +419,7 @@ app.post('/api/chat', async (req, res) => {
       return res.json({ reply, source: 'personal', score: 1, method: 'personal' });
     }
     // Ask for booking ID
-    pendingLookups[username] = personal.type;
+    pendingLookups[username] = { type: personal.type, expires: Date.now() + 5 * 60 * 1000 };
     const reply = language === 'de' ? personal.askMessageDe : personal.askMessage;
     return res.json({ reply, source: 'personal', score: 1, method: 'personal' });
   }
@@ -445,7 +473,7 @@ app.post('/api/chat/stream', async (req, res) => {
   // STEP 0 — Check for personal queries
   const bookingId = extractBookingId(userMessage);
   if (bookingId && pendingLookups[username]) {
-    const pType = pendingLookups[username];
+    const pType = pendingLookups[username].type || pendingLookups[username];
     delete pendingLookups[username];
     const reply = await handlePersonalQuery(pType, bookingId, username);
     console.log(`[PERSONAL] Lookup ${pType} for ${bookingId}`);
@@ -453,6 +481,19 @@ app.post('/api/chat/stream', async (req, res) => {
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     res.write(`data: ${JSON.stringify({ token: reply })}\n\n`);
+    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+    return res.end();
+  }
+
+  // Check for greetings
+  if (isGreeting(userMessage)) {
+    const t = language === 'de'
+      ? `Hallo ${username}! 😊 Ich bin Ihr Ayonic Support-Assistent. Wie kann ich Ihnen helfen?`
+      : `Hi ${username}! 😊 I'm your Ayonic support assistant. How can I help you today?`;
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.write(`data: ${JSON.stringify({ token: t })}\n\n`);
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
     return res.end();
   }
@@ -476,7 +517,7 @@ app.post('/api/chat/stream', async (req, res) => {
       res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
       return res.end();
     }
-    pendingLookups[username] = personal.type;
+    pendingLookups[username] = { type: personal.type, expires: Date.now() + 5 * 60 * 1000 };
     const reply = language === 'de' ? personal.askMessageDe : personal.askMessage;
     res.write(`data: ${JSON.stringify({ token: reply })}\n\n`);
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
@@ -492,8 +533,9 @@ app.post('/api/chat/stream', async (req, res) => {
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
 
-  // If no match, send rejection
+  // If no match, send rejection + save for learning
   if (!match) {
+    addUnanswered(userMessage, username);
     const rejectMsg = "I'm sorry, I can only answer questions about Ayonic's services, policies, and support. Please contact our support team at support@ayonic.com for further help.";
     res.write(`data: ${JSON.stringify({ token: rejectMsg })}\n\n`);
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`);

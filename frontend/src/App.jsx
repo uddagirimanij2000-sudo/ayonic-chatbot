@@ -1012,8 +1012,8 @@ export default function App() {
 
   // Background page text based on language
   const bgCards = language==="de"
-    ? ["Kostenloser Versand ab 50€","30 Tage Rückgabe","Sicherer Checkout","24/7 Support"]
-    : ["Free shipping over $50","30-day returns","Secure checkout","24/7 support"];
+    ? ["Verifizierte Anbieter ✓","Sichere Zahlungen 🔒","DSGVO-konform 🇪🇺","24/7 Support 💬"]
+    : ["Verified Providers ✓","Secure Payments 🔒","GDPR Compliant 🇪🇺","24/7 Support 💬"];
 
   const bgSub = language==="de"
     ? "Ihr vertrauenswürdiges Support-Ziel"
