@@ -266,6 +266,90 @@ async function callGroq(systemPrompt, userMessage, history = []) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  PERSONAL QUERY DETECTION — Payment/Booking Status
+// ═══════════════════════════════════════════════════════════════
+
+const PERSONAL_KEYWORDS = {
+  payment_status: {
+    patterns: ['my payment', 'payment status', 'my refund status', 'where is my refund', 'my money', 'did i pay', 'have i paid', 'my transaction',
+               'meine zahlung', 'zahlungsstatus', 'meine rückerstattung', 'mein geld'],
+    needsId: true,
+    askMessage: "I'd love to help check your payment status! 💳\n\nPlease provide your **Booking ID** (e.g., AY-12345) so I can look it up for you.",
+    askMessageDe: "Ich helfe Ihnen gerne, Ihren Zahlungsstatus zu prüfen! 💳\n\nBitte geben Sie Ihre **Buchungs-ID** an (z.B. AY-12345), damit ich nachschauen kann.",
+  },
+  booking_status: {
+    patterns: ['my booking', 'booking status', 'my appointment', 'when is my service', 'my order status', 'where is my provider', 'is my booking confirmed',
+               'meine buchung', 'buchungsstatus', 'mein termin', 'wann kommt mein anbieter'],
+    needsId: true,
+    askMessage: "I'd be happy to check your booking! 📋\n\nPlease share your **Booking ID** (e.g., AY-12345) and I'll find it for you.",
+    askMessageDe: "Ich prüfe gerne Ihre Buchung! 📋\n\nBitte teilen Sie Ihre **Buchungs-ID** (z.B. AY-12345) mit, damit ich sie finden kann.",
+  },
+  account_info: {
+    patterns: ['my account', 'my profile', 'my email', 'my phone number', 'change my password', 'delete my account',
+               'mein konto', 'mein profil', 'meine e-mail', 'konto löschen'],
+    needsId: false,
+    askMessage: "For account-related changes, please:\n\n1. Open the Ayonic app\n2. Go to **Profile → Settings**\n3. Update your information there\n\nFor account deletion, contact us at support@ayonic.com",
+    askMessageDe: "Für Kontoänderungen bitte:\n\n1. Öffnen Sie die Ayonic App\n2. Gehen Sie zu **Profil → Einstellungen**\n3. Aktualisieren Sie Ihre Daten dort\n\nZum Löschen des Kontos kontaktieren Sie support@ayonic.com",
+  },
+};
+
+// Track users who provided a booking ID
+const pendingLookups = {};
+
+function detectPersonalQuery(message) {
+  const lower = message.toLowerCase();
+  for (const [type, config] of Object.entries(PERSONAL_KEYWORDS)) {
+    if (config.patterns.some(p => lower.includes(p))) {
+      return { type, ...config };
+    }
+  }
+  return null;
+}
+
+function extractBookingId(message) {
+  // Match patterns like AY-12345, AY12345, #12345, or just 5+ digit numbers
+  const patterns = [
+    /AY-?\d{3,}/i,
+    /#?\d{5,}/,
+  ];
+  for (const p of patterns) {
+    const match = message.match(p);
+    if (match) return match[0].toUpperCase();
+  }
+  return null;
+}
+
+// ── Future: Replace this with real database lookup ────────────
+async function lookupPersonalData(type, bookingId, username) {
+  /*
+   * TODO: Connect to Ayonic MySQL database
+   *
+   * Example future implementation:
+   * const db = await mysql.createConnection(DB_CONFIG);
+   * const [rows] = await db.execute(
+   *   'SELECT * FROM bookings WHERE booking_id = ? AND user_name = ?',
+   *   [bookingId, username]
+   * );
+   * return rows[0] || null;
+   */
+
+  // For now — return a "checking" response
+  return null; // null = database not connected yet
+}
+
+async function handlePersonalQuery(type, bookingId, username) {
+  const data = await lookupPersonalData(type, bookingId, username);
+
+  if (data === null) {
+    // Database not connected yet — inform user
+    return `I found your Booking ID: **${bookingId}** ✅\n\nOur system is being upgraded to show real-time status. For now, please check your booking status in the **Ayonic app → My Bookings**, or contact support@ayonic.com with your Booking ID for immediate help. 🙏`;
+  }
+
+  // Future: format real data from database
+  return `Here's your ${type === 'payment_status' ? 'payment' : 'booking'} info for **${bookingId}**:\n${JSON.stringify(data)}`;
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  ROUTES
 // ═══════════════════════════════════════════════════════════════
 
@@ -278,7 +362,39 @@ app.post('/api/chat', async (req, res) => {
   }
 
   const userMessage = message.trim();
+  const username = req.body.username || 'User';
+  const language = req.body.language || 'en';
   console.log(`\n[QUERY] "${userMessage}"`);
+
+  // STEP 0 — Check for personal queries (payment status, booking status, etc.)
+  const bookingId = extractBookingId(userMessage);
+  if (bookingId && pendingLookups[username]) {
+    // User provided a Booking ID after being asked
+    const pType = pendingLookups[username];
+    delete pendingLookups[username];
+    const reply = await handlePersonalQuery(pType, bookingId, username);
+    console.log(`[PERSONAL] Lookup ${pType} for ${bookingId}`);
+    return res.json({ reply, source: 'personal', score: 1, method: 'personal' });
+  }
+
+  const personal = detectPersonalQuery(userMessage);
+  if (personal) {
+    console.log(`[PERSONAL] Detected: ${personal.type}`);
+    if (!personal.needsId) {
+      const reply = language === 'de' ? personal.askMessageDe : personal.askMessage;
+      return res.json({ reply, source: 'personal', score: 1, method: 'personal' });
+    }
+    // Check if user already included a booking ID
+    const idInMessage = extractBookingId(userMessage);
+    if (idInMessage) {
+      const reply = await handlePersonalQuery(personal.type, idInMessage, username);
+      return res.json({ reply, source: 'personal', score: 1, method: 'personal' });
+    }
+    // Ask for booking ID
+    pendingLookups[username] = personal.type;
+    const reply = language === 'de' ? personal.askMessageDe : personal.askMessage;
+    return res.json({ reply, source: 'personal', score: 1, method: 'personal' });
+  }
 
   // STEP 1 — Combined search (semantic + keyword fallback)
   const { match, score, topK, method } = await combinedSearch(userMessage);
@@ -322,7 +438,50 @@ app.post('/api/chat/stream', async (req, res) => {
   }
 
   const userMessage = message.trim();
+  const username = req.body.username || 'User';
+  const language = req.body.language || 'en';
   console.log(`\n[STREAM] "${userMessage}"`);
+
+  // STEP 0 — Check for personal queries
+  const bookingId = extractBookingId(userMessage);
+  if (bookingId && pendingLookups[username]) {
+    const pType = pendingLookups[username];
+    delete pendingLookups[username];
+    const reply = await handlePersonalQuery(pType, bookingId, username);
+    console.log(`[PERSONAL] Lookup ${pType} for ${bookingId}`);
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.write(`data: ${JSON.stringify({ token: reply })}\n\n`);
+    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+    return res.end();
+  }
+
+  const personal = detectPersonalQuery(userMessage);
+  if (personal) {
+    console.log(`[PERSONAL] Detected: ${personal.type}`);
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    if (!personal.needsId) {
+      const reply = language === 'de' ? personal.askMessageDe : personal.askMessage;
+      res.write(`data: ${JSON.stringify({ token: reply })}\n\n`);
+      res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+      return res.end();
+    }
+    const idInMessage = extractBookingId(userMessage);
+    if (idInMessage) {
+      const reply = await handlePersonalQuery(personal.type, idInMessage, username);
+      res.write(`data: ${JSON.stringify({ token: reply })}\n\n`);
+      res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+      return res.end();
+    }
+    pendingLookups[username] = personal.type;
+    const reply = language === 'de' ? personal.askMessageDe : personal.askMessage;
+    res.write(`data: ${JSON.stringify({ token: reply })}\n\n`);
+    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+    return res.end();
+  }
 
   // Search
   const { match, score, topK, method } = await combinedSearch(userMessage);
