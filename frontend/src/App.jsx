@@ -753,9 +753,8 @@ function ChatWindow({onClose, username, onUnreadChange, darkMode, toggleDark, la
     setError(null);
     if(taRef.current) taRef.current.style.height="auto";
 
-    // Create empty bot bubble to stream into
+    // Show typing dots first (no empty bubble yet)
     const botId=uid();
-    setMessages(p=>[...p,{id:botId,role:"bot",text:"",timestamp:new Date().toISOString()}]);
     setIsTyping(true);
 
     try{
@@ -767,7 +766,7 @@ function ChatWindow({onClose, username, onUnreadChange, darkMode, toggleDark, la
 
       const reader=res.body.getReader();
       const decoder=new TextDecoder();
-      let full="", buffer="";
+      let full="", buffer="", bubbleCreated=false;
 
       while(true){
         const{done,value}=await reader.read();
@@ -781,11 +780,23 @@ function ChatWindow({onClose, username, onUnreadChange, darkMode, toggleDark, la
               const data=JSON.parse(line.slice(5).trim());
               if(data.token){
                 full+=data.token;
-                setMessages(p=>p.map(m=>m.id===botId?{...m,text:full}:m));
+                if(!bubbleCreated){
+                  // First token arrived — hide typing dots, create bubble
+                  setIsTyping(false);
+                  setMessages(p=>[...p,{id:botId,role:"bot",text:full,timestamp:new Date().toISOString()}]);
+                  bubbleCreated=true;
+                } else {
+                  setMessages(p=>p.map(m=>m.id===botId?{...m,text:full}:m));
+                }
               }
             }catch(_){}
           }
         }
+      }
+
+      // If no tokens came, create a fallback bubble
+      if(!bubbleCreated){
+        setMessages(p=>[...p,{id:botId,role:"bot",text:full||"Sorry, I couldn't process that.",timestamp:new Date().toISOString()}]);
       }
 
       setHistory(h=>[...h,{role:"user",content:trimmed},{role:"assistant",content:full}]);
